@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
   </head>
   <body>
@@ -38,41 +38,37 @@
             <button id="pauseYoutubeBtn" type="button" style="display: none;">Pause</button>
           </div>
 
-    <footer class="footer">
-      &copy; Created by Kushaal Nayak
-    </footer>
+          <footer class="footer">
+            &copy; Created by Kushaal Nayak
+          </footer>
         </section>
       </div>
     </div>
 
-    <!-- YouTube IFrame API script (must be after the container for YT) -->
+    <!-- YouTube IFrame API script -->
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- Main Application Script -->
+    <!-- Main Script -->
     <script>
-      // --- Configuration ---
       const YOUTUBE_API_KEY = "AIzaSyBlssCoVb-tRcO1iUOdp6ABXMH2cwfhvOY";
       const SOCKET_SERVER_URL = "http://localhost:3000";
 
-      // --- DOM Elements ---
-      const roomIdInput       = document.getElementById("roomId");
-      const joinBtn           = document.getElementById("joinBtn");
-      const roomStatus        = document.getElementById("roomStatus");
-      const controls          = document.getElementById("controls");
-      const youtubeSearch     = document.getElementById("youtubeSearch");
-      const searchYoutubeBtn  = document.getElementById("searchYoutubeBtn");
-      const searchResults     = document.getElementById("searchResults");
-      const searchInfo        = document.getElementById("searchInfo");
+      const roomIdInput = document.getElementById("roomId");
+      const joinBtn = document.getElementById("joinBtn");
+      const roomStatus = document.getElementById("roomStatus");
+      const controls = document.getElementById("controls");
+      const youtubeSearch = document.getElementById("youtubeSearch");
+      const searchYoutubeBtn = document.getElementById("searchYoutubeBtn");
+      const searchResults = document.getElementById("searchResults");
+      const searchInfo = document.getElementById("searchInfo");
       const youtubePlayerContainer = document.getElementById("youtubePlayerContainer");
-      const playYoutubeBtn    = document.getElementById("playYoutubeBtn");
-      const pauseYoutubeBtn   = document.getElementById("pauseYoutubeBtn");
+      const playYoutubeBtn = document.getElementById("playYoutubeBtn");
+      const pauseYoutubeBtn = document.getElementById("pauseYoutubeBtn");
 
-      // --- State ---
       let socket;
       let room = "";
       let player;
 
-      // --- Event Listeners ---
       joinBtn.addEventListener("click", joinRoom);
       youtubeSearch.addEventListener("keydown", function(e) {
         if (e.key === "Enter") searchYoutube();
@@ -81,7 +77,6 @@
       playYoutubeBtn.addEventListener("click", playYoutube);
       pauseYoutubeBtn.addEventListener("click", pauseYoutube);
 
-      // --- Functions ---
       function joinRoom() {
         const enteredRoom = roomIdInput.value.trim();
         if (!enteredRoom) {
@@ -139,7 +134,6 @@
           });
       }
 
-      // Allow selectYoutubeVideo to be called from inline onclick
       window.selectYoutubeVideo = function(videoId) {
         searchResults.innerHTML = "";
         youtubePlayerContainer.innerHTML = '<div id="ytplayer"></div>';
@@ -187,7 +181,6 @@
           if (player && typeof player.pauseVideo === "function") player.pauseVideo();
         });
       }
-      // --- End of script ---
     </script>
   </body>
 </html>
