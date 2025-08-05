@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>ZoroBeats – Listen Together</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ZoroBeats</h1>
+      <h2>Real-Time Music Sync Room</h2>
+
+      <section class="room-join-section">
+        <label for="roomId">Enter Room ID:</label>
+        <input type="text" id="roomId" placeholder="e.g. room1" autocomplete="off" />
+        <button id="joinBtn" type="button">Join Room</button>
+        <div id="roomStatus" aria-live="polite"></div>
+      </section>
+
+      <div id="controls" style="display: none;">
+        <section class="youtube-section">
+          <h3 style="color: #fff;">
+            <i class="fab fa-youtube" style="color: red;"></i> YouTube
+          </h3>
+          <label for="youtubeSearch">Search for a song/video:</label>
+          <input type="text" id="youtubeSearch" placeholder="Type song or artist name" />
+          <button id="searchYoutubeBtn" type="button">Search</button>
+          <div id="searchInfo" style="font-size: 0.95em; color: #64748b; margin-top: 6px;"></div>
+          <div id="searchResults" style="margin-top: 16px;"></div>
+          <div id="youtubePlayerContainer" style="margin-top: 18px;"></div>
+
+          <div class="player-controls">
+            <button id="playYoutubeBtn" type="button" style="display: none;">Play</button>
+            <button id="pauseYoutubeBtn" type="button" style="display: none;">Pause</button>
+          </div>
+
+    <footer class="footer">
+      &copy; Created by Kushaal Nayak
+    </footer>
+        </section>
+      </div>
+    </div>
+
+    <!-- YouTube IFrame API script (must be after the container for YT) -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <!-- Main Application Script -->
+    <script>
+      // --- Configuration ---
+      const YOUTUBE_API_KEY = "AIzaSyBlssCoVb-tRcO1iUOdp6ABXMH2cwfhvOY";
+      const SOCKET_SERVER_URL = "http://localhost:3000";
+
+      // --- DOM Elements ---
+      const roomIdInput       = document.getElementById("roomId");
+      const joinBtn           = document.getElementById("joinBtn");
+      const roomStatus        = document.getElementById("roomStatus");
+      const controls          = document.getElementById("controls");
+      const youtubeSearch     = document.getElementById("youtubeSearch");
+      const searchYoutubeBtn  = document.getElementById("searchYoutubeBtn");
+      const searchResults     = document.getElementById("searchResults");
+      const searchInfo        = document.getElementById("searchInfo");
+      const youtubePlayerContainer = document.getElementById("youtubePlayerContainer");
+      const playYoutubeBtn    = document.getElementById("playYoutubeBtn");
+      const pauseYoutubeBtn   = document.getElementById("pauseYoutubeBtn");
+
+      // --- State ---
+      let socket;
+      let room = "";
+      let player;
+
+      // --- Event Listeners ---
+      joinBtn.addEventListener("click", joinRoom);
+      youtubeSearch.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") searchYoutube();
+      });
+      searchYoutubeBtn.addEventListener("click", searchYoutube);
+      playYoutubeBtn.addEventListener("click", playYoutube);
+      pauseYoutubeBtn.addEventListener("click", pauseYoutube);
+
+      // --- Functions ---
+      function joinRoom() {
+        const enteredRoom = roomIdInput.value.trim();
+        if (!enteredRoom) {
+          roomStatus.textContent = "Please enter a valid Room ID.";
+          return;
+        }
+        room = enteredRoom;
+        if (!socket) {
+          socket = io(SOCKET_SERVER_URL);
+          setupSocketListeners();
+        }
+        socket.emit("join-room", room);
+        controls.style.display = "block";
+        roomStatus.textContent = `Joined room: ${room}`;
+      }
+
+      function searchYoutube() {
+        const query = youtubeSearch.value.trim();
+        if (!query) {
+          searchInfo.textContent = "Please enter a search term.";
+          searchResults.innerHTML = "";
+          return;
+        }
+        searchInfo.textContent = "";
+        searchResults.innerHTML = "Searching...";
+
+        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=10&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`)
+          .then(response => response.json())
+          .then(data => {
+            if (!data.items || data.items.length === 0) {
+              searchResults.innerHTML = "No embeddable results found.";
+              return;
+            }
+            searchResults.innerHTML = data.items.map(item => `
+              <div class="yt-result-item" style="display:flex;align-items:center;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">
+                <img 
+                  src="${item.snippet.thumbnails.medium.url}"
+                  alt="Thumbnail for ${item.snippet.title}"
+                  class="yt-thumb"
+                  style="width:90px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;"
+                  onclick="selectYoutubeVideo('${item.id.videoId}')"
+                />
+                <div style="margin-left:14px;">
+                  <div 
+                    style="font-weight:500;font-size:1.05em;cursor:pointer;color:#6366f1;"
+                    onclick="selectYoutubeVideo('${item.id.videoId}')"
+                  >${item.snippet.title}</div>
+                  <div style="font-size:0.95em;color:#64748b;">${item.snippet.channelTitle}</div>
+                </div>
+              </div>
+            `).join("");
+          })
+          .catch(() => {
+            searchResults.innerHTML = "Error fetching results. Is your API key valid?";
+          });
+      }
+
+      // Allow selectYoutubeVideo to be called from inline onclick
+      window.selectYoutubeVideo = function(videoId) {
+        searchResults.innerHTML = "";
+        youtubePlayerContainer.innerHTML = '<div id="ytplayer"></div>';
+        playYoutubeBtn.style.display = "";
+        pauseYoutubeBtn.style.display = "";
+
+        if (player) player.destroy();
+
+        player = new YT.Player("ytplayer", {
+          height: "240",
+          width: "100%",
+          videoId: videoId,
+          playerVars: {
+            modestbranding: 1,
+            rel: 0,
+            controls: 1,
+            fs: 1,
+            iv_load_policy: 3,
+            disablekb: 0,
+            autoplay: 0
+          }
+        });
+      };
+
+      function playYoutube() {
+        if (player && typeof player.playVideo === "function") {
+          player.playVideo();
+          if (socket && room) socket.emit("sync-play-youtube", room);
+        }
+      }
+
+      function pauseYoutube() {
+        if (player && typeof player.pauseVideo === "function") {
+          player.pauseVideo();
+          if (socket && room) socket.emit("sync-pause-youtube", room);
+        }
+      }
+
+      function setupSocketListeners() {
+        socket.on("play-youtube", () => {
+          if (player && typeof player.playVideo === "function") player.playVideo();
+        });
+
+        socket.on("pause-youtube", () => {
+          if (player && typeof player.pauseVideo === "function") player.pauseVideo();
+        });
+      }
+      // --- End of script ---
+    </script>
+  </body>
+</html>
